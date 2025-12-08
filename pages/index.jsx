@@ -33,6 +33,34 @@ export default function Login() {
   }, [forgotMsg]);
 
   useEffect(() => {
+    // Check if user is already authenticated by making a request to the server
+    const checkAuthStatus = async () => {
+      try {
+        // Make a request to check authentication status
+        const response = await fetch('/api/auth/me', {
+          method: 'GET',
+          credentials: 'include' // This will include HttpOnly cookies
+        });
+        
+        if (response.ok) {
+          // User is authenticated, redirect to dashboard
+          window.location.href = "/dashboard";
+          return;
+        }
+        // If response is not ok (401 or other), user is not authenticated, stay on login page
+        // Don't log 401 errors as they're expected for unauthenticated users
+      } catch (error) {
+        // Error checking auth status, stay on login page
+        // Suppress console errors for expected 401 responses
+        if (error.name !== 'TypeError' || !error.message.includes('fetch')) {
+        console.log('Auth check failed:', error);
+        }
+      }
+    };
+
+    // Check authentication status
+    checkAuthStatus();
+
     // Check if user was redirected from a protected page
     const cookies = document.cookie.split(';');
     const redirectCookie = cookies.find(cookie => cookie.trim().startsWith('redirectAfterLogin='));
@@ -384,9 +412,10 @@ export default function Login() {
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                gap: 8
+                gap: 8,
+                flexWrap: 'nowrap'
               }}>
-                <span style={{ fontSize: 20 }}>❗</span> 
+                <span style={{ fontSize: 20, flexShrink: 0 }}>❗</span> 
                 {forgotMsg ? (
                   <span>
                     Contact Mr. George Magdy (admin) or Tony Joseph (

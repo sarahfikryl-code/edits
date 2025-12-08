@@ -637,7 +637,7 @@ export default function ContactDeveloperPage() {
           
           {/* Inner content container */}
           <div style={{
-            padding: "50px 40px",
+            padding: "50px 10px",
             paddingTop: "100px",
             position: "relative",
             zIndex: 2

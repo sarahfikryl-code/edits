@@ -18,10 +18,23 @@ export default function UserMenu() {
 
   // Subscription countdown timer
   const [timeRemaining, setTimeRemaining] = useState(null);
+  const hasLoggedOutRef = useRef(false); // Track if we've already called logout
 
   useEffect(() => {
-    if (!subscription || !subscription.active || !subscription.date_of_expiration) {
+    const isDeveloper = userData.role === 'developer';
+
+    // Simple logic: if active = false AND date_of_expiration = null, show expired
+    // Otherwise, if date_of_expiration exists, calculate timer
+    if (!subscription || (subscription.active === false && !subscription.date_of_expiration)) {
       setTimeRemaining(null);
+      hasLoggedOutRef.current = false;
+      return;
+    }
+
+    // If date_of_expiration exists, calculate timer
+    if (!subscription.date_of_expiration) {
+      setTimeRemaining(null);
+      hasLoggedOutRef.current = false;
       return;
     }
 
@@ -30,24 +43,49 @@ export default function UserMenu() {
       const expiration = new Date(subscription.date_of_expiration);
       const diff = expiration - now;
 
-      if (diff <= 0) {
-        setTimeRemaining(null);
-        return;
-      }
+      // Calculate time components (use Math.max to ensure non-negative)
+      const days = Math.max(0, Math.floor(diff / (1000 * 60 * 60 * 24)));
+      const hours = Math.max(0, Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60)));
+      const minutes = Math.max(0, Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60)));
+      const seconds = Math.max(0, Math.floor((diff % (1000 * 60)) / 1000));
 
-      const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-      const hours = Math.floor((diff % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-      const minutes = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((diff % (1000 * 60)) / 1000);
-
+      // Update timer with calculated values (always set, even if zero)
       setTimeRemaining({ days, hours, minutes, seconds });
+
+      // Check if all time components are zero (00:00:00:00) or diff <= 0
+      // Only auto-logout for non-developers
+      if (!isDeveloper && (diff <= 0 || (days === 0 && hours === 0 && minutes === 0 && seconds === 0))) {
+        // If timer reaches 00:00:00:00, delete token and redirect to login
+        if (!hasLoggedOutRef.current) {
+          hasLoggedOutRef.current = true;
+          (async () => {
+            try {
+              await apiClient.post('/api/auth/logout', {}, {
+                validateStatus: (status) => status < 500 // Accept 200-499 as success
+              }).catch(() => {
+                // Ignore errors - continue with redirect even if logout fails
+              });
+            } catch (err) {
+              // Ignore errors - continue with redirect even if logout fails
+              if (err.response?.status !== 400 && err.response?.status !== 401) {
+                console.error('Error logging out (continuing anyway):', err);
+              }
+            }
+            router.push('/');
+          })();
+        }
+      }
     };
 
+    // Calculate timer immediately
     updateTimer();
     const interval = setInterval(updateTimer, 1000);
 
-    return () => clearInterval(interval);
-  }, [subscription]);
+    return () => {
+      clearInterval(interval);
+      hasLoggedOutRef.current = false; // Reset logout flag when effect cleans up
+    };
+  }, [subscription, userData.role, router]);
 
   useEffect(() => {
     function handleClickOutside(e) {
@@ -141,7 +179,7 @@ export default function UserMenu() {
           }}>
             <div style={{ fontWeight: 800, fontSize: 18, color: '#1FA8DC', marginBottom: 2 }}>{userData.name || userData.id}</div>
             <div style={{ color: '#495057', fontSize: 15, fontWeight: 600 }}>
-              {userData.id ? `ID: ${userData.id}` : 'No ID'}
+              {userData.id ? `Username: ${userData.id}` : 'No Username'}
             </div>
           </div>
           {subscription && (
@@ -150,38 +188,40 @@ export default function UserMenu() {
               borderBottom: '1px solid #e9ecef',
               marginBottom: 8
             }}>
-              {subscription.active && timeRemaining ? (
+              {/* Show "Subscription Expired" only if active = false AND date_of_expiration = null */}
+              {subscription.active === false && !subscription.date_of_expiration ? (
                 <div style={{
-                  fontSize: 13,
-                  fontWeight: 600,
-                  color: '#495057',
-                  lineHeight: 1.4
-                }}>
-                  <div style={{ marginBottom: 4, color: '#6c757d', fontSize: 12 }}>Subscription time remaining:</div>
-                  <div style={{ 
-                    fontFamily: 'Courier New, monospace',
-                    letterSpacing: 0.5
-                  }}>
-                    <span style={{ color: '#1FA8DC' }}>{String(timeRemaining.days).padStart(2, '0')}</span>
-                    <span style={{ color: '#ef4a4a' }}> days : </span>
-                    <span style={{ color: '#1FA8DC' }}>{String(timeRemaining.hours).padStart(2, '0')}</span>
-                    <span style={{ color: '#ef4a4a' }}> hours : </span>
-                    <span style={{ color: '#1FA8DC' }}>{String(timeRemaining.minutes).padStart(2, '0')}</span>
-                    <span style={{ color: '#ef4a4a' }}> min : </span>
-                    <span style={{ color: '#1FA8DC' }}>{String(timeRemaining.seconds).padStart(2, '0')}</span>
-                    <span style={{ color: '#ef4a4a' }}> sec</span>
-                  </div>
-                </div>
-              ) : (
-                <div style={{
-                  fontSize: 13,
+                  fontSize: 15,
                   fontWeight: 700,
                   color: '#dc3545',
                   lineHeight: 1.4
                 }}>
                   Subscription Expired
                 </div>
-              )}
+              ) : subscription.date_of_expiration && timeRemaining !== null ? (
+                <div style={{
+                  fontSize: 15,
+                  fontWeight: 600,
+                  color: '#495057',
+                  lineHeight: 1.4
+                }}>
+                  <div style={{ marginBottom: 4, color: '#313437', fontSize: 15 }}>Subscription time remaining:</div>
+                  <div style={{ 
+                    fontFamily: 'Courier New, monospace',
+                    letterSpacing: 0.5,
+                    fontSize: 15
+                  }}>
+                    <span style={{ color: '#1fa8dc', fontSize: 15 }}>{String(timeRemaining.days || 0).padStart(2, '0')}</span>
+                    <span style={{ color: '#ed2929', fontSize: 15 }}> days : </span>
+                    <span style={{ color: '#1fa8dc', fontSize: 15 }}>{String(timeRemaining.hours || 0).padStart(2, '0')}</span>
+                    <span style={{ color: '#ed2929', fontSize: 15 }}> hours : </span>
+                    <span style={{ color: '#1fa8dc', fontSize: 15 }}>{String(timeRemaining.minutes || 0).padStart(2, '0')}</span>
+                    <span style={{ color: '#ed2929', fontSize: 15 }}> min : </span>
+                    <span style={{ color: '#1fa8dc', fontSize: 15 }}>{String(timeRemaining.seconds || 0).padStart(2, '0')}</span>
+                    <span style={{ color: '#ed2929', fontSize: 15 }}> sec</span>
+                  </div>
+                </div>
+              ) : null}
             </div>
           )}
           <button style={menuBtnStyle} onClick={handleLogout}>Logout</button>

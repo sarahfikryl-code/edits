@@ -72,8 +72,8 @@ export default function QR() {
   const { data: rawStudent, isLoading: studentLoading, error: studentError } = useStudent(searchId, { 
     enabled: !!searchId,
     // Optimized for fast error responses
-    refetchInterval: 2 * 1000, // Refetch every 2 seconds for faster updates
-    refetchIntervalInBackground: true, // Continue when tab is not active
+    refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes
+    refetchIntervalInBackground: false, // Don't refetch when tab is not active
     refetchOnWindowFocus: true, // Immediate update when switching back to tab
     staleTime: 0, // Always consider data stale for immediate updates
     gcTime: 1000, // Keep in cache for only 1 second to force fresh data

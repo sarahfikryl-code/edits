@@ -129,7 +129,7 @@ Note :-
 
 We are always happy to stay in touch 😊❤
 
-– Here's Mr. George's team`;
+– Tony Joseph Demo attendance system`;
 
       // Create WhatsApp URL with the formatted message
       const whatsappUrl = `https://wa.me/${parentNumber}?text=${encodeURIComponent(whatsappMessage)}`;

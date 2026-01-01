@@ -73,8 +73,10 @@ export default async function handler(req, res) {
         
         console.log('📋 Pagination params:', { currentPage, pageSize, searchTerm, sortField, sortDirection });
         
-        // Build query filter
-        let queryFilter = {};
+        // Build query filter (only include supported roles)
+        let queryFilter = {
+          role: { $in: ['admin', 'assistant', 'developer'] }
+        };
         
         if (searchTerm.trim()) {
           const search = searchTerm.trim();
@@ -96,7 +98,7 @@ export default async function handler(req, res) {
         console.log('🔍 Query filter:', JSON.stringify(queryFilter, null, 2));
         
         // Get total count for pagination
-        const totalCount = await db.collection('assistants').countDocuments(queryFilter);
+        const totalCount = await db.collection('users').countDocuments(queryFilter);
         const totalPages = Math.ceil(totalCount / pageSize);
         const skip = (currentPage - 1) * pageSize;
         
@@ -104,7 +106,7 @@ export default async function handler(req, res) {
         console.log(`📄 Page ${currentPage} of ${totalPages} (${pageSize} per page)`);
         
         // Get assistants with pagination (exclude password field for security)
-        const assistants = await db.collection('assistants')
+        const assistants = await db.collection('users')
           .find(queryFilter, { projection: { password: 0 } }) // Exclude password field
           .sort({ [sortField]: sortDirection })
           .skip(skip)
@@ -113,10 +115,11 @@ export default async function handler(req, res) {
         
         console.log(`✅ Retrieved ${assistants.length} assistants for page ${currentPage}`);
         
-        // Map assistants with default account_state (password already excluded via projection)
+        // Map assistants with default account_state and ATCA (password already excluded via projection)
         const mappedAssistants = assistants.map(assistant => ({
           ...assistant,
-          account_state: assistant.account_state || "Activated" // Default to Activated
+          account_state: assistant.account_state || "Activated", // Default to Activated
+          ATCA: assistant.ATCA || "no" // Default to no
         }));
         
         res.json({
@@ -139,27 +142,56 @@ export default async function handler(req, res) {
         });
       } else {
         // Legacy: Get all assistants (for backward compatibility) - exclude password for security
-        const assistants = await db.collection('assistants')
-          .find({}, { projection: { password: 0 } }) // Exclude password field
+        const assistants = await db.collection('users')
+          .find(
+            { role: { $in: ['admin', 'assistant', 'developer'] } },
+            { projection: { password: 0 } }
+          ) // Exclude password field
           .toArray();
-      const mappedAssistants = assistants.map(assistant => ({
-        ...assistant,
-        account_state: assistant.account_state || "Activated" // Default to Activated
-      }));
-      res.json(mappedAssistants);
+        const mappedAssistants = assistants.map(assistant => ({
+          ...assistant,
+          account_state: assistant.account_state || "Activated", // Default to Activated
+          ATCA: assistant.ATCA || "no" // Default to no
+        }));
+        res.json(mappedAssistants);
       }
     } else if (req.method === 'POST') {
       // Create new assistant
-      const { id, name, phone, password, role, account_state } = req.body;
+      const { id, name, phone, email, password, role, account_state, ATCA } = req.body;
       if (!id || !name || !phone || !password || !role) {
         return res.status(400).json({ error: 'All fields are required' });
       }
-      const exists = await db.collection('assistants').findOne({ id });
+      
+      // Validate email format if provided
+      if (email && email.trim() !== '') {
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email.trim())) {
+          return res.status(400).json({ error: 'Invalid email format' });
+        }
+      }
+      
+      const exists = await db.collection('users').findOne({ id });
       if (exists) {
         return res.status(409).json({ error: 'Assistant ID already exists' });
       }
       const hashedPassword = await bcrypt.hash(password, 10);
-      await db.collection('assistants').insertOne({ id, name, phone, password: hashedPassword, role, account_state: account_state || "Activated" });
+      const assistantData = { 
+        id, 
+        name, 
+        phone, 
+        email,
+        password: hashedPassword, 
+        role, 
+        account_state: account_state || "Activated", 
+        ATCA: ATCA || "no"
+      };
+      
+      // Add email if provided
+      if (email && email.trim() !== '') {
+        assistantData.email = email.trim();
+      }
+      
+      await db.collection('users').insertOne(assistantData);
       res.json({ success: true });
     } else {
       res.status(405).json({ error: 'Method not allowed' });

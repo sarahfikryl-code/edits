@@ -6,6 +6,9 @@ import { weeks } from "../../constants/weeks";
 import styles from '../../styles/TableScrollArea.module.css';
 import { useStudents, useStudent } from '../../lib/api/students';
 import LoadingSkeleton from '../../components/LoadingSkeleton';
+import { useQuery } from '@tanstack/react-query';
+import apiClient from '../../lib/axios';
+import Image from 'next/image';
 
 export default function StudentInfo() {
   const containerRef = useRef(null);
@@ -27,15 +30,68 @@ export default function StudentInfo() {
   // React Query hook with real-time updates - 5 second polling
   const { data: student, isLoading: studentLoading, error: studentError, refetch: refetchStudent, isRefetching, dataUpdatedAt } = useStudent(searchId, { 
     enabled: !!searchId,
-    // Aggressive real-time settings for immediate updates
-    refetchInterval: 5 * 1000, // Refetch every 5 seconds for real-time updates
-    refetchIntervalInBackground: true, // Continue when tab is not active
+    // Refetch settings
+    refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes
+    refetchIntervalInBackground: false, // Don't refetch when tab is not active
     refetchOnWindowFocus: true, // Immediate update when switching back to tab
     refetchOnReconnect: true, // Refetch when reconnecting to internet
     staleTime: 0, // Always consider data stale to force refetch
     gcTime: 1000, // Keep in cache for only 1 second
     refetchOnMount: true, // Always refetch when component mounts/page entered
   });
+
+  // Get student profile picture
+  const { data: profilePictureData, error: profilePictureError } = useQuery({
+    queryKey: ['student-profile-picture', searchId],
+    queryFn: async () => {
+      if (!searchId) return { url: null };
+      try {
+        const response = await apiClient.get(`/api/profile-picture/student/${searchId}`);
+        console.log('📸 Profile picture API response:', response.data);
+        return response.data;
+      } catch (err) {
+        console.error('❌ Profile picture API error:', err);
+        return { url: null };
+      }
+    },
+    enabled: !!searchId,
+    staleTime: 50 * 60 * 1000, // 50 minutes
+    retry: 1,
+  });
+
+  const profilePictureUrl = profilePictureData?.url || null;
+
+  // Get user email from users collection
+  const { data: userEmailData } = useQuery({
+    queryKey: ['user-email', searchId],
+    queryFn: async () => {
+      if (!searchId) return { email: null };
+      try {
+        const response = await apiClient.get(`/api/users/${searchId}/email`);
+        return response.data;
+      } catch (err) {
+        console.error('❌ User email API error:', err);
+        return { email: null };
+      }
+    },
+    enabled: !!searchId,
+    staleTime: 50 * 60 * 1000, // 50 minutes
+    retry: 1,
+  });
+
+  const userEmail = userEmailData?.email || null;
+  
+  // Debug logging
+  useEffect(() => {
+    if (searchId) {
+      console.log('🖼️ Profile picture state:', {
+        searchId,
+        profilePictureData,
+        profilePictureUrl,
+        error: profilePictureError
+      });
+    }
+  }, [searchId, profilePictureData, profilePictureUrl, profilePictureError]);
 
   // Debug logging for React Query status
   useEffect(() => {
@@ -494,10 +550,86 @@ export default function StudentInfo() {
         {student && !studentDeleted && (
           <div className="info-container">
             <div className="student-details">
+              {/* Profile Picture Preview - Read Only */}
+              <div className="detail-item" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px' }}>
+                <div className="detail-label" style={{ textAlign: 'center', width: '100%' }}>Profile Picture</div>
+                {profilePictureUrl ? (
+                  <div
+                    style={{
+                      width: 120,
+                      height: 120,
+                      borderRadius: '50%',
+                      background: '#e9ecef',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(31,168,220,0.15)',
+                      border: '2px solid #1FA8DC',
+                      overflow: 'hidden',
+                      position: 'relative'
+                    }}
+                  >
+                    <img
+                      src={profilePictureUrl}
+                      alt="Profile"
+                      onError={(e) => {
+                        console.error('❌ Image failed to load:', profilePictureUrl);
+                        e.target.style.display = 'none';
+                      }}
+                      onLoad={() => {
+                        console.log('✅ Image loaded successfully:', profilePictureUrl);
+                      }}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: '50%'
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div
+                    style={{
+                      width: 120,
+                      height: 120,
+                      borderRadius: '50%',
+                      background: '#e9ecef',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      boxShadow: '0 2px 8px rgba(31,168,220,0.15)',
+                      border: '2px solid #e9ecef',
+                      position: 'relative'
+                    }}
+                  >
+                    <span style={{ 
+                      fontWeight: 700, 
+                      fontSize: 36, 
+                      color: '#adb5bd',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: '100%',
+                      height: '100%',
+                      lineHeight: 1,
+                      textAlign: 'center'
+                    }}>
+                      {student.name && student.name.length > 0 ? student.name[0].toUpperCase() : '?'}
+                    </span>
+                  </div>
+                )}
+              </div>
+
               <div className="detail-item">
                 <div className="detail-label">Full Name</div>
                 <div className="detail-value">{student.name}</div>
               </div>
+              {userEmail && (
+                <div className="detail-item">
+                  <div className="detail-label">Email</div>
+                  <div className="detail-value" style={{ fontFamily: 'monospace' }}>{userEmail}</div>
+                </div>
+              )}
               {student.age && (
                 <div className="detail-item">
                   <div className="detail-label">Age</div>

@@ -38,9 +38,9 @@ export default function SessionInfo() {
 
   // React Query hook with real-time updates - 5 second polling like history page
   const { data: students = [], isLoading, error, refetch, isRefetching, dataUpdatedAt } = useStudents({}, {
-    // Aggressive real-time settings for immediate updates
-    refetchInterval: 5 * 1000, // Refetch every 5 seconds for real-time updates
-    refetchIntervalInBackground: true, // Continue when tab is not active
+    // Refetch settings
+    refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes
+    refetchIntervalInBackground: false, // Don't refetch when tab is not active
     refetchOnWindowFocus: true, // Immediate update when switching back to tab
     refetchOnReconnect: true, // Refetch when reconnecting to internet
     staleTime: 0, // Always consider data stale to force refetch

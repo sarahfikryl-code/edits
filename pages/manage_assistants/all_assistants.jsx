@@ -77,7 +77,11 @@ export default function AllAssistants() {
   });
 
   // Extract assistants array and pagination info from response
-  const assistants = assistantsResponse?.data || [];
+  const assistantsRaw = assistantsResponse?.data || [];
+  // Only include supported roles
+  const assistants = assistantsRaw.filter(a =>
+    ['admin', 'assistant', 'developer'].includes(a.role)
+  );
   const pagination = assistantsResponse?.pagination || {
     currentPage: 1,
     totalPages: 1,
@@ -303,30 +307,39 @@ export default function AllAssistants() {
           ) : (
             <ScrollArea h={400} type="hover" className={styles.scrolled}>
               <Table striped highlightOnHover withTableBorder withColumnBorders>
-                <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa', zIndex: 10 }}>
+                <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa' }}>
                   <Table.Tr>
-                    <Table.Th style={{ width: '15%' }}>Username</Table.Th>
-                    <Table.Th style={{ width: '20%' }}>Name</Table.Th>
-                    <Table.Th style={{ width: '25%' }}>Phone Number</Table.Th>
-                    <Table.Th style={{ width: '20%' }}>Role</Table.Th>
-                    <Table.Th style={{ width: '20%' }}>Account Status</Table.Th>
+                    <Table.Th style={{ width: '12%', textAlign: 'center' }}>Username</Table.Th>
+                    <Table.Th style={{ width: '18%', textAlign: 'center' }}>Name</Table.Th>
+                    <Table.Th style={{ width: '18%', textAlign: 'center' }}>Phone Number</Table.Th>
+                    <Table.Th style={{ width: '15%', textAlign: 'center' }}>Role</Table.Th>
+                    <Table.Th style={{ width: '15%', textAlign: 'center' }}>Account Status</Table.Th>
+                    <Table.Th style={{ width: '22%', textAlign: 'center' }}>Added to Contact Assistants Page</Table.Th>
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
                   {assistants.map(assistant => (
                     <Table.Tr key={assistant.id}>
-                      <Table.Td style={{ fontWeight: 'bold', color: '#1FA8DC' }}>{assistant.id}</Table.Td>
-                      <Table.Td style={{ fontWeight: '600' }}>{assistant.name}</Table.Td>
-                      <Table.Td style={{ fontFamily: 'monospace', fontSize: '0.9rem' }}>{assistant.phone}</Table.Td>
+                      <Table.Td style={{ fontWeight: 'bold', color: '#1FA8DC', textAlign: 'center' }}>{assistant.id}</Table.Td>
+                      <Table.Td style={{ fontWeight: '600', textAlign: 'center' }}>{assistant.name}</Table.Td>
+                      <Table.Td style={{ fontFamily: 'monospace', fontSize: '0.9rem', textAlign: 'center' }}>{assistant.phone}</Table.Td>
                       <Table.Td style={{ 
                         fontWeight: '600',
-                        color: assistant.role === 'admin' ? '#dc3545' : (assistant.role === 'developer' ? '#28a745' : (assistant.role === 'assistant' ? '#3175b1' : '#6c757d'))
+                        color: assistant.role === 'admin' ? '#dc3545' : (assistant.role === 'developer' ? '#28a745' : (assistant.role === 'assistant' ? '#3175b1' : '#6c757d')),
+                        textAlign: 'center'
                       }}>{assistant.role}</Table.Td>
                       <Table.Td style={{ textAlign: 'center' }}>
                         {assistant.account_state === 'Deactivated' ? (
                           <span style={{ color: '#dc3545', fontWeight: 'bold' }}>❌ Deactivated</span>
                         ) : (
                           <span style={{ color: '#28a745', fontWeight: 'bold' }}>✅ Activated</span>
+                        )}
+                      </Table.Td>
+                      <Table.Td style={{ textAlign: 'center' }}>
+                        {assistant.ATCA === 'yes' ? (
+                          <span style={{ color: '#28a745', fontWeight: 'bold' }}>✅ Yes</span>
+                        ) : (
+                          <span style={{ color: '#dc3545', fontWeight: 'bold' }}>❌ No</span>
                         )}
                       </Table.Td>
                     </Table.Tr>

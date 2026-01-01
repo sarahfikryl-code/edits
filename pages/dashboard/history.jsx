@@ -66,9 +66,9 @@ export default function History() {
 
   // React Query hook with real-time updates - 5 second polling
   const { data: students = [], isLoading, error, refetch, isRefetching, dataUpdatedAt } = useStudentsHistory({
-    // Aggressive real-time settings for immediate updates
-    refetchInterval: 5 * 1000, // Refetch every 5 seconds for real-time updates
-    refetchIntervalInBackground: true, // Continue when tab is not active
+    // Refetch settings
+    refetchInterval: 30 * 60 * 1000, // Refetch every 30 minutes
+    refetchIntervalInBackground: false, // Don't refetch when tab is not active
     refetchOnWindowFocus: true, // Immediate update when switching back to tab
     refetchOnReconnect: true, // Refetch when reconnecting to internet
     staleTime: 0, // Always consider data stale to force refetch
@@ -674,7 +674,7 @@ export default function History() {
             <>
             <ScrollArea h={400} type="hover" className={styles.scrolled}>
               <Table striped highlightOnHover withTableBorder withColumnBorders style={{ minWidth: '1400px' }}>
-                <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa', zIndex: 10 }}>
+                <Table.Thead style={{ position: 'sticky', top: 0, backgroundColor: '#f8f9fa' }}>
                   <Table.Tr>
                     <Table.Th style={{ width: '60px', minWidth: '60px', textAlign: 'center' }}>ID</Table.Th>
                     <Table.Th style={{ width: '120px', minWidth: '120px', textAlign: 'center' }}>Name</Table.Th>

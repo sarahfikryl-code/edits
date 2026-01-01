@@ -448,7 +448,7 @@ export default function AddStudent() {
                 autocomplete="off"
               />
               <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
-                Must be exactly 11 digits (e.g., 012345678901)
+                Must be exactly 11 digits (e.g., 01234567891)
               </small>
             </div>
             <div className="form-group">
@@ -471,7 +471,7 @@ export default function AddStudent() {
                 autocomplete="off"
               />
               <small style={{ color: '#6c757d', fontSize: '0.85rem', marginTop: '4px', display: 'block' }}>
-                Must be exactly 11 digits (e.g., 01234567890)
+                Must be exactly 11 digits (e.g., 01234567891)
               </small>
             </div>
             <div className="form-group">
